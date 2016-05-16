@@ -1,6 +1,16 @@
 #!/bin/bash
 
-for i in `seq 1 100`;
+GUEST_IP=$1
+WAIT_TIME=$2
+APPLICATION="server.php"
+
+echo "Starting client..."
+
+while [ 1 = 1 ];
 do
-	curl http://localhost:8080/info.php
+	echo "Going to sleep"
+	sleep $WAIT_TIME
+	echo "Waking up"
+	echo "Accessing application"	
+	curl $GUEST_IP/$APPLICATION
 done
