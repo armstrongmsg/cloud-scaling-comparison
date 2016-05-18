@@ -1,9 +1,10 @@
 #!/bin/bash
 
+WORKING_DIRECTORY="`dirname $0`"
 GUEST_IP=$1
 TIME_ADD_NEW_CLIENT=$2
 MAX_CLIENTS=$3
-CLIENT_SCRIPT="./client.sh"
+CLIENT_SCRIPT=$WORKING_DIRECTORY"/client.sh"
 CURRENT_CLIENTS=0
 
 echo "Starting load generator"
