@@ -2,7 +2,6 @@
 
 SCALING_TYPE="$1"
 VM_NAME="$2"
-VM_IP="$3"
 
 CPU_CAP_SCALING=(["25000"]="50000" ["50000"]="75000" ["75000"]="100000" ["100000"]="100000")
 N_CPUs_SCALING=(["1"]="2" ["2"]="3" ["3"]="4" ["4"]="4")
@@ -17,13 +16,7 @@ if [ $SCALING_TYPE = "CPU_CAP" ]; then
 elif [ $SCALING_TYPE = "N_CPUs" ]; then
 	echo "Adding CPUs"
 	echo "From $N_CPUs to ${N_CPUs_SCALING[$N_CPUs]}"
-	virsh setvcpus $VM_NAME ${N_CPUs_SCALING[$N_CPUs]}
-	
-	for cpu in `seq 1 ${N_CPUs_SCALING[$N_CPUs]}`;
-	do
-		#Not working!
-		ssh root@$VM_IP 'bash -s' | echo 1 > /sys/devices/system/cpu/cpu$(($cpu-1))/online
-	done
+	virsh setvcpus $VM_NAME ${N_CPUs_SCALING[$N_CPUs]} --current
 else
 	echo "Unknown scaling type"
 fi
