@@ -1,10 +1,10 @@
 #!/bin/bash
 
-WORKING_DIRECTORY="`dirname $0`"
+PROJECT_HOME=$SCALING_PROJECT_HOME
 GUEST_IP=$1
 TIME_ADD_NEW_CLIENT=$2
 MAX_CLIENTS=$3
-CLIENT_SCRIPT=$WORKING_DIRECTORY"/client.sh"
+CLIENT_SCRIPT=$PROJECT_HOME"/load_generators/client.sh"
 CURRENT_CLIENTS=0
 
 # TODO should handle the kill signal to kill the subprocesses
