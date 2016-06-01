@@ -59,39 +59,64 @@ class Environment_Info:
 		else:
 			return proportional_cpu_usage_trigger
 
-cpu_usage_collect_method = "ssh"
-user = "armstrong"
 
+def log(text, file):
+	file.write(str(time.time()) + " " + text + "\n")
+	file.flush()
+
+def get_project_home_path():
+	if os.environ.has_key("SCALING_PROJECT_HOME"):
+		return os.environ["SCALING_PROJECT_HOME"]
+	else:
+		print "Please set environment variable SCALING_PROJECT_HOME."
+		sys.exit(1)
+
+project_home = get_project_home_path()
 proportional_cpu_usage_trigger = int(sys.argv[1])
 scaling_type = sys.argv[2]
-cpu_log_filename = sys.argv[3]
+cpu_usage_collect_method = sys.argv[3]
+cpu_log_filename = ""
+user = ""
 
-if os.environ.has_key("SCALING_PROJECT_HOME"):
-	project_home = os.environ["SCALING_PROJECT_HOME"]
+if cpu_usage_collect_method == "ssh":
+	user = sys.argv[4]
 else:
-	print "Please set environment variable SCALING_PROJECT_HOME."
-	sys.exit(1)
+	cpu_log_filename = sys.argv[4]
 
+monitor_log_filename = project_home + "/logs/monitor/monitor.log"
+monitor_cpu_log = project_home + "/logs/monitor/cpu.log"
+log_file = open(monitor_log_filename, "a")
+cpu_log = open(monitor_cpu_log, "a")
+# TODO These values should be read from a conf file or received as argument
 env_info = Environment_Info(["lubuntu1"], ["192.168.122.32"], cpu_log_filename, project_home)
 
-# FIXME should process the signals to terminate
+# FIXME should process the signals to terminate (close files, etc)
 while True:
 	time.sleep(1)
 
 	cpu_usage = env_info.get_vm_cpu_usage()
 	cpu_usage_trigger = env_info.get_cpu_usage_trigger(proportional_cpu_usage_trigger)
 	# TODO log this
-	print "trigger:", cpu_usage_trigger, "usage:", cpu_usage, "cpu_quota: ", env_info.domain_infos["lubuntu1"].cpu_quota
+	log("Trigger: " + str(cpu_usage_trigger) + "; Usage: " + str(cpu_usage) + " Cpu_quota: " + str(env_info.domain_infos["lubuntu1"].cpu_quota), log_file)
+	log(str(cpu_usage), cpu_log)
+
 	if cpu_usage >= cpu_usage_trigger:
-		print "Scaling:", scaling_type
+		log("CPU Usage triggered scaling: " + scaling_type, log_file)
+
 		if scaling_type in ["CPU_CAP", "N_CPUs"]:
+
+			log("Starting scaling process", log_file)
 			subprocess.check_output("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[0], shell=True, cwd=project_home)
+
 			# FIXME should be a constant
-			# FIXME explain this sleep	
+			# FIXME explain this sleep
+			log("Waiting for scaling", log_file)	
 			time.sleep(5)
+
+			log("Updating environment info after scaling", log_file)
 			env_info.update()
 			cpu_usage_trigger = env_info.get_cpu_usage_trigger(proportional_cpu_usage_trigger)
 
 			# TODO log this
-			print "trigger:", cpu_usage_trigger
+			log("Scaling trigger after scaling: " + str(cpu_usage_trigger), log_file)
 
