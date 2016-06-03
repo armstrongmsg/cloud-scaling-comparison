@@ -4,6 +4,7 @@ import subprocess
 import time
 import sys
 import os
+import ConfigParser
 
 class Domain_Info:
 	def __init__(self, domain_name, domain_ip):
@@ -18,47 +19,38 @@ class Domain_Info:
 		self.cpu_quota = int(subprocess.check_output("virsh schedinfo " + self.domain_name + " | grep vcpu_quota | awk '{print $3}'", shell=True))
 		self.cpu_period = int(subprocess.check_output("virsh schedinfo " + self.domain_name + " | grep vcpu_period | awk '{print $3}'", shell=True))	
 
-
 class Environment_Info:
-	def __init__(self, domain_names, domain_ips, cpu_usage_file, project_home):		
-		# FIXME domain_names length must be > 0
-		self.domain_names = domain_names
-		self.domain_ips = domain_ips
-		self.domain_infos = {self.domain_names[i]:Domain_Info(self.domain_names[i], self.domain_ips[i]) for i in xrange(0, len(self.domain_names))}
-		self.cpu_usage_file = cpu_usage_file
+	def __init__(self, project_home):		
+		self.config = ConfigParser.ConfigParser()
+		self.config.read(project_home + "/conf/domain.properties")
+		self.domain_names = self.config.sections()
 		self.project_home = project_home
 		self.update()
 
 	def update(self):
 		self.n_cpus = int(subprocess.check_output("virsh nodeinfo | grep \"CPU(s)\" | awk '{print $2}'", shell=True))
-		for domain_info in self.domain_infos.values():
-			domain_info.update()
 
 	def get_vm_cpu_usage(self):
-		cpu_usage = 0
-
-		if cpu_usage_collect_method == "virt-top":		
-			# FIXME explain the dependance to virt-top output
-			cpu_usage=subprocess.check_output("tail -n 1 " + self.cpu_usage_file + " | awk '{print $7}' | awk '{split($0,a,\",\"); print a[1]\".\"a[2]}'", shell=True, cwd=project_home)
-			if cpu_usage.strip()[-1] == ".":
-				cpu_usage = cpu_usage.strip()[:-1]
-			cpu_usage = float(cpu_usage.replace(",", "."))
-		else:
-			idle = subprocess.check_output("ssh " + user + "@" + self.domain_ips[0] + " sar 1 1 | awk 'FNR == 4 {print $8}'", shell=True, cwd=project_home)
-			idle = float(idle.replace(",", "."))
-			cpu_usage = 100 - idle
+		vm_to_check = self.config.sections()[0] 
+		ip_to_check = self.config_section_map(self.config, vm_to_check)['ip']
+		user = self.config_section_map(self.config, vm_to_check)['user']
+		idle = subprocess.check_output("ssh " + user + "@" + ip_to_check + " sar 1 1 | awk 'FNR == 4 {print $8}'", shell=True, cwd=project_home)
+		idle = float(idle.replace(",", "."))
+		cpu_usage = 100 - idle
 		return cpu_usage
 
-	def get_cpu_usage_trigger(self, proportional_cpu_usage_trigger):
-		if cpu_usage_collect_method == "virt-top":
-			n_cpus_vm = self.domain_infos[self.domain_names[0]].n_cpus_vm
-			cpu_quota = self.domain_infos[self.domain_names[0]].cpu_quota
-			cpu_period = self.domain_infos[self.domain_names[0]].cpu_period
-			# TODO explain this expression
-			return (proportional_cpu_usage_trigger * n_cpus_vm * cpu_quota) / float(self.n_cpus * cpu_period)
-		else:
-			return proportional_cpu_usage_trigger
-
+	def config_section_map(self, config, section):
+		config_dict = {}
+		options = config.options(section)
+		for option in options:
+			try:
+				config_dict[option] = config.get(section, option)
+				if config_dict[option] == -1:
+					DebugPrint("skip: %s" % option)
+			except:
+				print("exception on %s!" % option)
+				config_dict[option] = None
+		return config_dict
 
 def log(text, file):
 	file.write(str(time.time()) + " " + text + "\n")
@@ -74,33 +66,23 @@ def get_project_home_path():
 project_home = get_project_home_path()
 proportional_cpu_usage_trigger = int(sys.argv[1])
 scaling_type = sys.argv[2]
-cpu_usage_collect_method = sys.argv[3]
-cpu_log_filename = ""
-user = ""
-
-if cpu_usage_collect_method == "ssh":
-	user = sys.argv[4]
-else:
-	cpu_log_filename = sys.argv[4]
 
 monitor_log_filename = project_home + "/logs/monitor/monitor.log"
 monitor_cpu_log = project_home + "/logs/monitor/cpu.log"
 log_file = open(monitor_log_filename, "a")
 cpu_log = open(monitor_cpu_log, "a")
-# TODO These values should be read from a conf file or received as argument
-env_info = Environment_Info(["lubuntu1"], ["192.168.122.32"], cpu_log_filename, project_home)
+
+env_info = Environment_Info(project_home)
 
 # FIXME should process the signals to terminate (close files, etc)
 while True:
 	time.sleep(1)
 
 	cpu_usage = env_info.get_vm_cpu_usage()
-	cpu_usage_trigger = env_info.get_cpu_usage_trigger(proportional_cpu_usage_trigger)
-	# TODO log this
-	log("Trigger: " + str(cpu_usage_trigger) + "; Usage: " + str(cpu_usage) + " Cpu_quota: " + str(env_info.domain_infos["lubuntu1"].cpu_quota), log_file)
+	log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage), log_file)
 	log(str(cpu_usage), cpu_log)
 
-	if cpu_usage >= cpu_usage_trigger:
+	if cpu_usage >= proportional_cpu_usage_trigger:
 		log("CPU Usage triggered scaling: " + scaling_type, log_file)
 
 		if scaling_type in ["CPU_CAP", "N_CPUs"]:
@@ -115,8 +97,4 @@ while True:
 
 			log("Updating environment info after scaling", log_file)
 			env_info.update()
-			cpu_usage_trigger = env_info.get_cpu_usage_trigger(proportional_cpu_usage_trigger)
-
-			# TODO log this
-			log("Scaling trigger after scaling: " + str(cpu_usage_trigger), log_file)
 
