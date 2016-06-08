@@ -1,2 +1,4 @@
 logs/
 conf/domain.properties
+conf/experiment.cfg
+conf/client.cfg

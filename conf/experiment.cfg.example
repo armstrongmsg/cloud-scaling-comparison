@@ -1,0 +1,2 @@
+scaling_type="CPU_CAP"
+cpu_usage_trigger=70

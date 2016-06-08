@@ -2,6 +2,7 @@
 
 PROJECT_HOME=$SCALING_PROJECT_HOME
 # TODO add input checking
+# TODO should get guest from config
 GUEST_IP=$1
 TIME_ADD_NEW_CLIENT=$2
 MAX_CLIENTS=$3
@@ -22,7 +23,12 @@ function clean_up {
 
 trap clean_up SIGINT SIGTERM
 
+log "guest ip: $GUEST_IP"
+log "time add new client: $TIME_ADD_NEW_CLIENT"
+log "max clients: $MAX_CLIENTS"
+log "client wait time: $CLIENT_WAIT_TIME"
 log "Starting load generator"
+log ""
 
 while [ "$CURRENT_CLIENTS" -ne "$MAX_CLIENTS" ];
 do	
