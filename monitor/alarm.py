@@ -5,6 +5,7 @@ import time
 import sys
 import os
 import ConfigParser
+import logging
 
 class Domain_Info:
 	def __init__(self, domain_name, domain_ip):
@@ -52,10 +53,6 @@ class Environment_Info:
 				config_dict[option] = None
 		return config_dict
 
-def log(text, file):
-	file.write(str(time.time()) + " " + text + "\n")
-	file.flush()
-
 def get_project_home_path():
 	if os.environ.has_key("SCALING_PROJECT_HOME"):
 		return os.environ["SCALING_PROJECT_HOME"]
@@ -63,38 +60,70 @@ def get_project_home_path():
 		print "Please set environment variable SCALING_PROJECT_HOME."
 		sys.exit(1)
 
+def configure_logging():
+	logging.basicConfig(level=logging.DEBUG)
+
+def get_cpu_logger(log_file_path):
+	logger = logging.getLogger("cpu_log")
+
+	handler = logging.StreamHandler()
+	handler.setLevel(logging.DEBUG)
+	logger.addHandler(handler)
+
+	handler = logging.FileHandler(log_file_path)
+	logger.addHandler(handler)
+	
+	return logger
+
+def get_general_logger(log_file_path):
+	logger = logging.getLogger("general_log")
+
+	handler = logging.StreamHandler()
+	handler.setLevel(logging.DEBUG)
+	logger.addHandler(handler)
+
+	handler = logging.FileHandler(log_file_path)
+	logger.addHandler(handler)
+
+	return logger
+
 project_home = get_project_home_path()
 proportional_cpu_usage_trigger = int(sys.argv[1])
 scaling_type = sys.argv[2]
 
 monitor_log_filename = project_home + "/logs/monitor/monitor.log"
 monitor_cpu_log = project_home + "/logs/monitor/cpu.log"
-log_file = open(monitor_log_filename, "a")
-cpu_log = open(monitor_cpu_log, "a")
+
+configure_logging()
+cpu_log = get_cpu_logger(monitor_cpu_log)
+log_file = get_general_logger(monitor_log_filename)
 
 env_info = Environment_Info(project_home)
 
-# FIXME should process the signals to terminate (close files, etc)
 while True:
 	time.sleep(1)
 
 	cpu_usage = env_info.get_vm_cpu_usage()
-	log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage), log_file)
-	log(str(cpu_usage), cpu_log)
-
+	# TODO log time
+	log_file.info("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
+	# TODO log time
+	cpu_log.info(str(cpu_usage))
+	
 	if cpu_usage >= proportional_cpu_usage_trigger:
-		log("CPU Usage triggered scaling: " + scaling_type, log_file)
-
+		log_file.info("CPU Usage triggered scaling: " + scaling_type)
+	
 		if scaling_type in ["CPU_CAP", "N_CPUs"]:
-
-			log("Starting scaling process", log_file)
+			# TODO log time
+			log_file.info("Starting scaling process")
 			subprocess.check_output("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[0], shell=True, cwd=project_home)
-
+	
 			# FIXME should be a constant
 			# FIXME explain this sleep
-			log("Waiting for scaling", log_file)	
-			time.sleep(5)
-
-			log("Updating environment info after scaling", log_file)
+			# TODO log time
+			log_file.info("Waiting for scaling")	
+			time.sleep(5)	
+			
+			# TODO log time
+			log_file.info("Updating environment info after scaling")
 			env_info.update()
-
+	

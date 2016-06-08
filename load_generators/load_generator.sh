@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PROJECT_HOME=$SCALING_PROJECT_HOME
+# TODO add input checking
 GUEST_IP=$1
 TIME_ADD_NEW_CLIENT=$2
 MAX_CLIENTS=$3
@@ -13,7 +14,14 @@ function log {
 	echo "`date +%s%N` $1" >> $LOAD_GENERATOR_LOG_FILE
 }
 
-# TODO should handle the kill signal to kill the subprocesses
+function clean_up {
+	log "Stopping clients"
+	pkill -P $$
+	exit 0
+}
+
+trap clean_up SIGINT SIGTERM
+
 log "Starting load generator"
 
 while [ "$CURRENT_CLIENTS" -ne "$MAX_CLIENTS" ];
@@ -27,6 +35,4 @@ do
 	sleep $TIME_ADD_NEW_CLIENT
 done
 
-log "Stopping clients"
-
-pkill -P $$
+clean_up
