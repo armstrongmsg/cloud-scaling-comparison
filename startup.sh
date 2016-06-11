@@ -20,7 +20,7 @@ for directory in $LOG_DIRECTORIES; do
 done
 
 # check all scripts are placed correctly
-SCRIPT_FILES="load_generators/client.sh load_generators/load_generator.sh monitor/alarm.py monitor/collector.sh scaling/scaling.sh"
+SCRIPT_FILES="load_generators/client.sh load_generators/load_generator.sh monitor/alarm.py monitor/collector.sh monitor/monitor.sh scaling/scaling.sh"
 
 for file in $SCRIPT_FILES; do
 	if [ ! -e "$SCALING_PROJECT_HOME/$file" ]; then
@@ -59,6 +59,9 @@ echo "cpu_usage_trigger: $cpu_usage_trigger"
 # start monitoring
 "$SCALING_PROJECT_HOME/monitor/alarm.py" $cpu_usage_trigger $scaling_type 2> /dev/null &
 echo $! > "$SCALING_PROJECT_HOME/logs/alarm.pid"
+
+"$SCALING_PROJECT_HOME/monitor/monitor.sh" 2> /dev/null &
+echo $! > "$SCALING_PROJECT_HOME/logs/monitor.pid"
 
 # start load generator
 main_domain_ip="`cat $SCALING_PROJECT_HOME/conf/domain.properties | grep -v "#" | grep IP | awk '{print $2}'`"

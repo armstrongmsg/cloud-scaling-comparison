@@ -35,7 +35,7 @@ class Environment_Info:
 		vm_to_check = self.config.sections()[0] 
 		ip_to_check = self.config_section_map(self.config, vm_to_check)['ip']
 		user = self.config_section_map(self.config, vm_to_check)['user']
-		idle = subprocess.check_output("ssh " + user + "@" + ip_to_check + " sar 1 1 | awk 'FNR == 4 {print $8}'", shell=True, cwd=project_home)
+		idle = subprocess.check_output("bash monitor/collector.sh " + user + " " + ip_to_check, shell=True, cwd=project_home)
 		idle = float(idle.replace(",", "."))
 		cpu_usage = 100 - idle
 		return cpu_usage
@@ -63,18 +63,6 @@ def get_project_home_path():
 def configure_logging():
 	logging.basicConfig(level=logging.DEBUG)
 
-def get_cpu_logger(log_file_path):
-	logger = logging.getLogger("cpu_log")
-
-	handler = logging.StreamHandler()
-	handler.setLevel(logging.DEBUG)
-	logger.addHandler(handler)
-
-	handler = logging.FileHandler(log_file_path)
-	logger.addHandler(handler)
-	
-	return logger
-
 def get_general_logger(log_file_path):
 	logger = logging.getLogger("general_log")
 
@@ -91,11 +79,9 @@ project_home = get_project_home_path()
 proportional_cpu_usage_trigger = int(sys.argv[1])
 scaling_type = sys.argv[2]
 
-monitor_log_filename = project_home + "/logs/monitor/monitor.log"
-monitor_cpu_log = project_home + "/logs/monitor/cpu.log"
+monitor_log_filename = project_home + "/logs/monitor/alarm.log"
 
 configure_logging()
-cpu_log = get_cpu_logger(monitor_cpu_log)
 log_file = get_general_logger(monitor_log_filename)
 
 env_info = Environment_Info(project_home)
@@ -106,8 +92,6 @@ while True:
 	cpu_usage = env_info.get_vm_cpu_usage()
 	# TODO log time
 	log_file.info("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
-	# TODO log time
-	cpu_log.info(str(cpu_usage))
 	
 	if cpu_usage >= proportional_cpu_usage_trigger:
 		log_file.info("CPU Usage triggered scaling: " + scaling_type)

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COLLECT_INTERVAL=$1
-OUTPUT_FILE=$2
+VM_USER=$1
+VM_IP=$2
 
-virt-top -d $COLLECT_INTERVAL --stream > $OUTPUT_FILE
+echo "`ssh $VM_USER@$VM_IP sar 1 1 | awk 'FNR == 4 {print $8}'`"
