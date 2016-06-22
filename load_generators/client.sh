@@ -29,7 +29,7 @@ do
 	log "Waking up"
 	log "Accessing application"
 	START_TIME=`date +%s%N`
-	curl -s $GUEST_IP/$APPLICATION > /dev/null
+	curl $GUEST_IP/$APPLICATION > /dev/null 2>> "$PROJECT_HOME/logs/curl.error"
 	END_TIME=`date +%s%N`
 	REQUEST_TIME=$(echo "$END_TIME - $START_TIME" | bc)
 	log_request $END_TIME $REQUEST_TIME
