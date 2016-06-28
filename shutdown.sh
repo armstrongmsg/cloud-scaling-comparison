@@ -14,4 +14,8 @@ echo "Shutting down alarm"
 kill $alarm_pid
 
 echo "Shutting down monitor"
-kill $monitor_pid
+for pid_file in "`ls $SCALING_PROJECT_HOME/logs/monitor/pids/*pid`"
+do
+	pid="`cat $pid_file`"
+	kill $pid
+done

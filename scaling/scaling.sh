@@ -2,8 +2,15 @@
 
 PROJECT_HOME=$SCALING_PROJECT_HOME
 SCALING_LOG_FILE="$PROJECT_HOME/logs/scaling/scaling.log"
+DOMAIN_CONF_FILE="$PROJECT_HOME/conf/domain.properties"
+# FIXME conf file?
+BASE_DOMAIN="for_cloning"
+# FIXME HARDCODED
+USER="armstrong"
+VMs_IMAGES_DIR="/local/VMs"
 SCALING_TYPE="$1"
 VM_NAME="$2"
+LOAD_BALANCER_IP="$3"
 
 function log {
 	echo $1 >> $SCALING_LOG_FILE
@@ -19,6 +26,7 @@ log "Configuration: Scaling type = $SCALING_TYPE - Domain name: $VM_NAME"
 
 N_CPUs=`virsh dominfo $VM_NAME | grep "CPU(s)" | awk '{print $2}'`
 CPU_CAP=`virsh schedinfo $VM_NAME | grep vcpu_quota | awk '{print $3}'`
+N_VMs=`cat $DOMAIN_CONF_FILE | grep -v "#" | grep "IP" | wc -l`
 
 log "VM configuration"
 log "Number of CPUs: $N_CPUs"
@@ -32,6 +40,40 @@ elif [ $SCALING_TYPE = "N_CPUs" ]; then
 	log "Adding CPUs"
 	log "From $N_CPUs to ${N_CPUs_SCALING[$N_CPUs]}"
 	virsh setvcpus $VM_NAME ${N_CPUs_SCALING[$N_CPUs]} --current
+elif [ $SCALING_TYPE = "VMs" ]; then
+	log "Adding VM"
+	NEW_VM_NAME="Ubuntu_$(($N_VMs + 1))"
+
+	log "New VM name: $NEW_VM_NAME"
+	virt-clone -o $BASE_DOMAIN --name $NEW_VM_NAME --file "$VMs_IMAGES_DIR/$NEW_VM_NAME"
+	virsh start $NEW_VM_NAME
+
+	# FIXME this is bad. The script is dependent on the time that the VM uses to startup
+	# Maybe a better option cat /var/lib/libvirt/dnsmasq/default.leases | grep $mac | awk '{print $3}'
+	sleep 30
+	
+	VM_MAC="`virsh domiflist $NEW_VM_NAME | awk 'FNR == 3 {print $5}'`"
+	VM_IP="`arp -e | grep $VM_MAC | awk '{print $1}'`"
+
+	log "VM IP: $VM_IP"
+
+	# avoid ssh asking for confirmation	
+	ssh-keyscan $VM_IP >> ~/.ssh/known_hosts
+	
+	# add vm to domain.properties
+	echo >> $DOMAIN_CONF_FILE
+
+	echo "[$NEW_VM_NAME]" >> $DOMAIN_CONF_FILE
+	echo "IP: $VM_IP" >> $DOMAIN_CONF_FILE
+	echo "user: $USER" >> $DOMAIN_CONF_FILE 
+	
+	# add vm to /etc/haproxy/haproxy.cfg
+	echo "    server $NEW_VM_NAME $VM_IP:8080 check" | ssh "$USER"@"$LOAD_BALANCER_IP" "cat >> /home/$USER/haproxy.cfg"
+	ssh root@$LOAD_BALANCER_IP service haproxy restart
+	# TODO haproxy hot config reload
+	
+	# FIXME should be here?
+	"$SCALING_PROJECT_HOME/monitor/update_monitor.sh"
 else
 	log "Unknown scaling type"
 fi

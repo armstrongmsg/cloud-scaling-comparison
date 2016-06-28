@@ -22,24 +22,33 @@ class Domain_Info:
 
 class Environment_Info:
 	def __init__(self, project_home):		
-		self.config = ConfigParser.ConfigParser()
-		self.config.read(project_home + "/conf/domain.properties")
-		self.domain_names = self.config.sections()
 		self.project_home = project_home
 		self.update()
 
 	def update(self):
 		self.n_cpus = int(subprocess.check_output("virsh nodeinfo | grep \"CPU(s)\" | awk '{print $2}'", shell=True))
+		self.config = ConfigParser.ConfigParser()
+		self.config.read(self.project_home + "/conf/domain.properties")
+		self.domain_names = self.config.sections()
+		
+	def get_load_balancer_IP(self):
+		load_balancer = self.config.sections()[0]
+		return self.config_section_map(self.config, load_balancer)['ip']
 
 	def get_vm_cpu_usage(self):
-		vm_to_check = self.config.sections()[0] 
-		ip_to_check = self.config_section_map(self.config, vm_to_check)['ip']
-		user = self.config_section_map(self.config, vm_to_check)['user']
-		idle = subprocess.check_output("bash monitor/collector.sh " + user + " " + ip_to_check, shell=True, cwd=project_home)
-		idle = float(idle.replace(",", "."))
-		cpu_usage = 100 - idle
-		return cpu_usage
+		usages = []
 
+		# exclude the load balancer
+		for index in xrange(1, len(self.config.sections())):
+			vm = self.config.sections()[index]
+			user = self.config_section_map(self.config, vm)['user']
+			ip = self.config_section_map(self.config, vm)['ip']
+			idle = subprocess.check_output("bash monitor/collector.sh " + user + " " + ip, shell=True, cwd=self.project_home)
+			idle = float(idle.replace(",", "."))
+			cpu_usage = 100 - idle
+			usages.append(cpu_usage)
+		return sum(usages)/float(len(usages))
+		
 	def config_section_map(self, config, section):
 		config_dict = {}
 		options = config.options(section)
@@ -60,6 +69,7 @@ def get_project_home_path():
 		print "Please set environment variable SCALING_PROJECT_HOME."
 		sys.exit(1)
 
+# TODO load from external library
 def configure_logging():
 	logging.basicConfig(level=logging.DEBUG)
 
@@ -85,29 +95,36 @@ configure_logging()
 log_file = get_general_logger(monitor_log_filename)
 
 env_info = Environment_Info(project_home)
+load_balancer_IP = env_info.get_load_balancer_IP()
 
 while True:
 	time.sleep(1)
+	log_file.info("Updating environment info")
+	env_info.update()
 
+	log_file.info("Getting environment resources usage")
 	cpu_usage = env_info.get_vm_cpu_usage()
+
 	# TODO log time
+	# TODO log how many VMs are being monitored
 	log_file.info("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
 	
 	if cpu_usage >= proportional_cpu_usage_trigger:
 		log_file.info("CPU Usage triggered scaling: " + scaling_type)
-	
-		if scaling_type in ["CPU_CAP", "N_CPUs"]:
-			# TODO log time
-			log_file.info("Starting scaling process")
-			subprocess.check_output("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[0], shell=True, cwd=project_home)
-	
-			# FIXME should be a constant
-			# FIXME explain this sleep
-			# TODO log time
-			log_file.info("Waiting for scaling")	
-			time.sleep(5)	
-			
-			# TODO log time
-			log_file.info("Updating environment info after scaling")
-			env_info.update()
-	
+		log_file.info("Starting scaling process")
+		scaling_process = subprocess.Popen("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[1] + " " + load_balancer_IP, shell=True, cwd=project_home)
+
+		# TODO log time
+		log_file.info("Waiting for scaling")
+		while scaling_process.poll() is None:
+			time.sleep(0.5)
+
+		# FIXME should be a constant
+		# FIXME explain this sleep
+		time.sleep(5)	
+				
+		# TODO log time
+		log_file.info("Updating environment info after scaling")
+		env_info.update()
+		log_file.info("Updated environment info")
+
