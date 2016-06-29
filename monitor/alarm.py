@@ -85,14 +85,40 @@ def get_general_logger(log_file_path):
 
 	return logger
 
-project_home = get_project_home_path()
-proportional_cpu_usage_trigger = int(sys.argv[1])
-scaling_type = sys.argv[2]
+def get_error_logger(error_log_path):
+	logger = logging.getLogger("error_log")
 
+	handler = logging.StreamHandler()
+	handler.setLevel(logging.DEBUG)
+	logger.addHandler(handler)
+
+	handler = logging.FileHandler(error_log_path)
+	logger.addHandler(handler)
+
+	return logger
+
+project_home = get_project_home_path()
 monitor_log_filename = project_home + "/logs/monitor/alarm.log"
+error_log_filename = project_home + "/logs/monitor/alarm.error"
 
 configure_logging()
 log_file = get_general_logger(monitor_log_filename)
+error_log = get_error_logger(error_log_filename)
+
+# Check arguments
+if len(sys.argv) != 3:
+	error_log.error("Incorrect number of arguments %s. Exiting.", len(sys.argv) - 1)
+	exit(1)
+
+if sys.argv[1]  == "":
+	error_log.error("Proportional CPU usage trigger is empty. Exiting.")
+	exit(1)
+elif sys.argv[2]  == "":
+	error_log.error("Scaling type is empty. Exiting.")
+	exit(1)
+
+proportional_cpu_usage_trigger = int(sys.argv[1])
+scaling_type = sys.argv[2]
 
 env_info = Environment_Info(project_home)
 load_balancer_IP = env_info.get_load_balancer_IP()

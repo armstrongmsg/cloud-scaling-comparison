@@ -2,6 +2,7 @@
 
 PROJECT_HOME=$SCALING_PROJECT_HOME
 SCALING_LOG_FILE="$PROJECT_HOME/logs/scaling/scaling.log"
+ERROR_LOG_FILE="$PROJECT_HOME/logs/scaling/scaling.error"
 DOMAIN_CONF_FILE="$PROJECT_HOME/conf/domain.properties"
 # FIXME conf file?
 BASE_DOMAIN="for_cloning"
@@ -16,8 +17,34 @@ function log {
 	echo $1 >> $SCALING_LOG_FILE
 }
 
+function log_error {
+	echo $1 >> $ERROR_LOG_FILE
+}
+
 CPU_CAP_SCALING=(["25000"]="50000" ["50000"]="75000" ["75000"]="100000" ["100000"]="100000")
 N_CPUs_SCALING=(["1"]="2" ["2"]="3" ["3"]="4" ["4"]="4")
+
+#Check arguments
+if [ $# -ne 3 ]
+then
+	log_error "Incorrect number of arguments ($#). Exiting."
+	exit 1
+fi
+
+if [ -z "$SCALING_TYPE" ]
+then
+	log_error "SCALING_TYPE is empty. Exiting."
+	exit 1
+elif [ -z "$VM_NAME" ]
+then
+	log_error "VM_NAME is empty. Exiting."
+	exit 1
+elif [ -z "$LOAD_BALANCER_IP" ]
+then
+	log_error "LOAD_BALANCER_IP is empty. Exiting."
+	exit 1
+fi
+
 
 log "-------------------------------------------------------------------"
 log "System time: `date +%s%N`"
