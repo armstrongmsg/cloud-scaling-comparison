@@ -7,6 +7,7 @@ import os
 import ConfigParser
 import logging
 
+# TODO move to other file
 class Domain_Info:
 	def __init__(self, domain_name, domain_ip):
 		self.domain_name = domain_name
@@ -69,52 +70,43 @@ def get_project_home_path():
 		print "Please set environment variable SCALING_PROJECT_HOME."
 		sys.exit(1)
 
-# TODO load from external library
+# TODO move to other file
+class Log:
+	def __init__(self, name, output_file_path):
+		self.logger = logging.getLogger(name)
+
+		handler = logging.StreamHandler()
+		handler.setLevel(logging.DEBUG)
+		self.logger.addHandler(handler)
+
+		handler = logging.FileHandler(output_file_path)
+		self.logger.addHandler(handler)
+
+	def log(self, text):
+		self.logger.info(str(time.time()) + " " + text)
+
 def configure_logging():
 	logging.basicConfig(level=logging.DEBUG)
-
-def get_general_logger(log_file_path):
-	logger = logging.getLogger("general_log")
-
-	handler = logging.StreamHandler()
-	handler.setLevel(logging.DEBUG)
-	logger.addHandler(handler)
-
-	handler = logging.FileHandler(log_file_path)
-	logger.addHandler(handler)
-
-	return logger
-
-def get_error_logger(error_log_path):
-	logger = logging.getLogger("error_log")
-
-	handler = logging.StreamHandler()
-	handler.setLevel(logging.DEBUG)
-	logger.addHandler(handler)
-
-	handler = logging.FileHandler(error_log_path)
-	logger.addHandler(handler)
-
-	return logger
 
 project_home = get_project_home_path()
 monitor_log_filename = project_home + "/logs/monitor/alarm.log"
 error_log_filename = project_home + "/logs/monitor/alarm.error"
 
 configure_logging()
-log_file = get_general_logger(monitor_log_filename)
-error_log = get_error_logger(error_log_filename)
+
+log_file = Log("general log", monitor_log_filename)
+error_log = Log("error log", error_log_filename)
 
 # Check arguments
 if len(sys.argv) != 3:
-	error_log.error("Incorrect number of arguments %s. Exiting.", len(sys.argv) - 1)
+	error_log.log("Incorrect number of arguments (" + str(len(sys.argv) - 1) +"). Exiting.")
 	exit(1)
 
 if sys.argv[1]  == "":
-	error_log.error("Proportional CPU usage trigger is empty. Exiting.")
+	error_log.log("Proportional CPU usage trigger is empty. Exiting.")
 	exit(1)
 elif sys.argv[2]  == "":
-	error_log.error("Scaling type is empty. Exiting.")
+	error_log.log("Scaling type is empty. Exiting.")
 	exit(1)
 
 proportional_cpu_usage_trigger = int(sys.argv[1])
@@ -125,23 +117,21 @@ load_balancer_IP = env_info.get_load_balancer_IP()
 
 while True:
 	time.sleep(1)
-	log_file.info("Updating environment info")
+	log_file.log("Updating environment info")
 	env_info.update()
 
-	log_file.info("Getting environment resources usage")
+	log_file.log("Getting environment resources usage")
 	cpu_usage = env_info.get_vm_cpu_usage()
 
-	# TODO log time
 	# TODO log how many VMs are being monitored
-	log_file.info("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
+	log_file.log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
 	
 	if cpu_usage >= proportional_cpu_usage_trigger:
-		log_file.info("CPU Usage triggered scaling: " + scaling_type)
-		log_file.info("Starting scaling process")
+		log_file.log("CPU Usage triggered scaling: " + scaling_type)
+		log_file.log("Starting scaling process")
 		scaling_process = subprocess.Popen("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[1] + " " + load_balancer_IP, shell=True, cwd=project_home)
 
-		# TODO log time
-		log_file.info("Waiting for scaling")
+		log_file.log("Waiting for scaling")
 		while scaling_process.poll() is None:
 			time.sleep(0.5)
 
@@ -149,8 +139,7 @@ while True:
 		# FIXME explain this sleep
 		time.sleep(5)	
 				
-		# TODO log time
-		log_file.info("Updating environment info after scaling")
+		log_file.log("Updating environment info after scaling")
 		env_info.update()
-		log_file.info("Updated environment info")
+		log_file.log("Updated environment info")
 
