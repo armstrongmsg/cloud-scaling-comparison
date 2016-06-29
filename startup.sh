@@ -19,6 +19,16 @@ for directory in $LOG_DIRECTORIES; do
 	fi
 done
 
+# check result directory
+if [ ! -d "$SCALING_PROJECT_HOME/results" ]; then
+	mkdir "$SCALING_PROJECT_HOME/results"
+fi
+
+# check backup directory
+if [ ! -d "$SCALING_PROJECT_HOME/backup" ]; then
+	mkdir "$SCALING_PROJECT_HOME/backup"
+fi
+
 # check all scripts are placed correctly
 SCRIPT_FILES="load_generators/client.sh load_generators/load_generator.sh monitor/alarm.py monitor/collector.sh monitor/monitor.sh monitor/update_monitor.sh scaling/scaling.sh"
 
@@ -63,6 +73,8 @@ echo $! > "$SCALING_PROJECT_HOME/logs/alarm.pid"
 # start one monitor for each IP in domain.properties
 "$SCALING_PROJECT_HOME/monitor/update_monitor.sh"
 
+# backup domain.properties
+cp "$SCALING_PROJECT_HOME/conf/domain.properties" "$SCALING_PROJECT_HOME/backup"
 # start load generator
 main_domain_ip="`cat $SCALING_PROJECT_HOME/conf/domain.properties | grep -v "#" | grep IP | awk 'FNR == 1 {print $2}'`"
 "$SCALING_PROJECT_HOME/load_generators/load_generator.sh" $main_domain_ip $time_add_new_client $max_clients $client_wait_time 2> /dev/null &
