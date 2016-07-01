@@ -4,3 +4,4 @@ conf/experiment.cfg
 conf/client.cfg
 results/
 backup/
+*.pyc

@@ -5,21 +5,7 @@ import time
 import sys
 import os
 import ConfigParser
-import logging
-
-# TODO move to other file
-class Domain_Info:
-	def __init__(self, domain_name, domain_ip):
-		self.domain_name = domain_name
-		self.domain_ip = domain_ip	
-		self.n_cpus_vm = 1
-		self.cpu_quota = 100000
-		self.cpu_period = 100000
-
-	def update(self):
-		self.n_cpus_vm = int(subprocess.check_output("virsh dominfo " + self.domain_name + " | grep \"CPU(s)\" | awk '{print$2}'", shell=True))
-		self.cpu_quota = int(subprocess.check_output("virsh schedinfo " + self.domain_name + " | grep vcpu_quota | awk '{print $3}'", shell=True))
-		self.cpu_period = int(subprocess.check_output("virsh schedinfo " + self.domain_name + " | grep vcpu_period | awk '{print $3}'", shell=True))	
+from Log import *
 
 class Environment_Info:
 	def __init__(self, project_home):		
@@ -35,7 +21,10 @@ class Environment_Info:
 	def get_load_balancer_IP(self):
 		load_balancer = self.config.sections()[0]
 		return self.config_section_map(self.config, load_balancer)['ip']
-
+	
+	def get_domain_number(self):
+		return len(self.domain_names)
+	
 	def get_vm_cpu_usage(self):
 		usages = []
 
@@ -70,24 +59,12 @@ def get_project_home_path():
 		print "Please set environment variable SCALING_PROJECT_HOME."
 		sys.exit(1)
 
-# TODO move to other file
-class Log:
-	def __init__(self, name, output_file_path):
-		self.logger = logging.getLogger(name)
-
-		handler = logging.StreamHandler()
-		handler.setLevel(logging.DEBUG)
-		self.logger.addHandler(handler)
-
-		handler = logging.FileHandler(output_file_path)
-		self.logger.addHandler(handler)
-
-	def log(self, text):
-		self.logger.info(str(time.time()) + " " + text)
-
-def configure_logging():
-	logging.basicConfig(level=logging.DEBUG)
-
+# The scaling is done when the environment resources are heavily used in order to low this usage. 
+# However, the environment needs some time to adapt (CPUs or VMs used correctly by the application) as
+# in the seconds right after the scaling, the resource usage in some computing nodes may still be high.
+# To address this problem the alarm sleeps for scaling_adapt_time seconds so the usage is evenly distributed
+# between the computing nodes.
+scaling_adapt_time = 10
 project_home = get_project_home_path()
 monitor_log_filename = project_home + "/logs/monitor/alarm.log"
 error_log_filename = project_home + "/logs/monitor/alarm.error"
@@ -122,9 +99,9 @@ while True:
 
 	log_file.log("Getting environment resources usage")
 	cpu_usage = env_info.get_vm_cpu_usage()
+	n_vms = env_info.get_domain_number()
 
-	# TODO log how many VMs are being monitored
-	log_file.log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage))
+	log_file.log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage) + "; N_VMs: " + str(n_vms))
 	
 	if cpu_usage >= proportional_cpu_usage_trigger:
 		log_file.log("CPU Usage triggered scaling: " + scaling_type)
@@ -135,9 +112,8 @@ while True:
 		while scaling_process.poll() is None:
 			time.sleep(0.5)
 
-		# FIXME should be a constant
-		# FIXME explain this sleep
-		time.sleep(5)	
+		log_file.log("Waiting for scaling adaption")
+		time.sleep(scaling_adapt_time)	
 				
 		log_file.log("Updating environment info after scaling")
 		env_info.update()
