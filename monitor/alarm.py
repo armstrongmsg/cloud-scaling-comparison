@@ -92,6 +92,7 @@ scaling_type = sys.argv[2]
 env_info = Environment_Info(project_home)
 load_balancer_IP = env_info.get_load_balancer_IP()
 
+cpu_trigger_violations_count = 0
 while True:
 	time.sleep(1)
 	log_file.log("Updating environment info")
@@ -104,18 +105,23 @@ while True:
 	log_file.log("Trigger: " + str(proportional_cpu_usage_trigger) + "; Usage: " + str(cpu_usage) + "; N_VMs: " + str(n_vms))
 	
 	if cpu_usage >= proportional_cpu_usage_trigger:
-		log_file.log("CPU Usage triggered scaling: " + scaling_type)
-		log_file.log("Starting scaling process")
-		scaling_process = subprocess.Popen("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[1] + " " + load_balancer_IP, shell=True, cwd=project_home)
+		if cpu_trigger_violations_count > 3:
+			log_file.log("CPU Usage triggered scaling: " + scaling_type)
+			log_file.log("Starting scaling process")
+			scaling_process = subprocess.Popen("bash scaling/scaling.sh " + scaling_type + " " + env_info.domain_names[1] + " " + load_balancer_IP, shell=True, cwd=project_home)
 
-		log_file.log("Waiting for scaling")
-		while scaling_process.poll() is None:
-			time.sleep(0.5)
-
-		log_file.log("Waiting for scaling adaption")
-		time.sleep(scaling_adapt_time)	
-				
-		log_file.log("Updating environment info after scaling")
-		env_info.update()
-		log_file.log("Updated environment info")
-
+			log_file.log("Waiting for scaling")
+			while scaling_process.poll() is None:
+				time.sleep(0.5)
+	
+			log_file.log("Waiting for scaling adaption")
+			time.sleep(scaling_adapt_time)	
+					
+			log_file.log("Updating environment info after scaling")
+			env_info.update()
+			log_file.log("Updated environment info")
+			cpu_trigger_violations_count = 0
+		else:
+			cpu_trigger_violations_count += 1
+	else:
+		cpu_trigger_violations_count = 0	
