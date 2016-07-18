@@ -3,11 +3,20 @@
 IFS=' '
 read -r -a ips <<< "`cat $SCALING_PROJECT_HOME/conf/domain.properties | grep -v "#" | grep IP | awk 'BEGIN {ORS=" "} {print $2}'`"
 
-for ip in ${ips[@]}
-do
-	usage_log_file="$SCALING_PROJECT_HOME/logs/monitor/monitor.$ip.log"
-	plot_output_file="$SCALING_PROJECT_HOME/analysis/plots/usage.$ip.png"
+BASE_DOMAIN_IP="${ips[1]}"
+MERGED_USAGE_LOG_FILE="$SCALING_PROJECT_HOME/analysis/merged_usage.log"
+PLOT_OUTPUT_FILE="$SCALING_PROJECT_HOME/analysis/plots/usage.png"
 
-	sed -i -e 's/,/./g' $usage_log_file	
-	Rscript "$SCALING_PROJECT_HOME/analysis/resources_usage.R" "$usage_log_file" "$plot_output_file"
+SCALING_TYPES="CPU_CAP N_CPUs VMs"
+for scaling_type in $SCALING_TYPES
+do
+	USAGE_LOG_FILE="$SCALING_PROJECT_HOME/analysis/$scaling_type/monitor/monitor.$BASE_DOMAIN_IP.log"
+
+	while IFS='' read -r line || [[ -n "$line" ]]; do
+		echo "$line $scaling_type" >> $MERGED_USAGE_LOG_FILE
+	done < "$USAGE_LOG_FILE"
+
+	sed -i -e 's/,/./g' $MERGED_USAGE_LOG_FILE
 done
+
+Rscript "$SCALING_PROJECT_HOME/analysis/resources_usage.R" "$MERGED_USAGE_LOG_FILE" "$PLOT_OUTPUT_FILE"

@@ -46,6 +46,7 @@ then
 fi
 
 
+START_TIME="`date +%s%N`"
 log "-------------------------------------------------------------------"
 log "System time: `date +%s%N`"
 log "Starting Scaling script"
@@ -105,5 +106,7 @@ else
 	log "Unknown scaling type"
 fi
 
+END_TIME="`date +%s%N`"
+log "start-end-times: $START_TIME $END_TIME"
 log "Shutting down Scaling script"
 

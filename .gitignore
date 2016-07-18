@@ -1,5 +1,10 @@
 analysis/plots
 analysis/*.txt
+analysis/*.log
+analysis/*.zip
+analysis/CPU_CAP
+analysis/N_CPUs
+analysis/VMs
 logs/
 conf/domain.properties
 conf/experiment.cfg

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO include analysis data
+# TODO reset vm config
+
 LOGS_DIRECTORY="$SCALING_PROJECT_HOME/logs"
 
 #
