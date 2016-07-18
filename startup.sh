@@ -29,6 +29,27 @@ if [ ! -d "$SCALING_PROJECT_HOME/backup" ]; then
 	mkdir "$SCALING_PROJECT_HOME/backup"
 fi
 
+# check analysis directory
+if [ ! -d "$SCALING_PROJECT_HOME/analysis" ]; then
+	echo "Required directory $SCALING_PROJECT_HOME/analysis does not exist."
+	exit 1
+fi
+
+# check CPU_CAP logs directory
+if [ ! -d "$SCALING_PROJECT_HOME/analysis/CPU_CAP" ]; then
+	mkdir "$SCALING_PROJECT_HOME/analysis/CPU_CAP"
+fi
+
+# check N_CPUs logs directory
+if [ ! -d "$SCALING_PROJECT_HOME/analysis/N_CPUs" ]; then
+	mkdir "$SCALING_PROJECT_HOME/analysis/N_CPUs"
+fi
+
+# check VMs logs directory
+if [ ! -d "$SCALING_PROJECT_HOME/analysis/VMs" ]; then
+	mkdir "$SCALING_PROJECT_HOME/analysis/VMs"
+fi
+
 # check all scripts are placed correctly
 SCRIPT_FILES="load_generators/client.sh load_generators/load_generator.sh monitor/alarm.py monitor/collector.sh monitor/monitor.sh monitor/update_monitor.sh scaling/scaling.sh"
 

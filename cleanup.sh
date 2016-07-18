@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# TODO include analysis data
-# TODO reset vm config
+source "$SCALING_PROJECT_HOME/conf/experiment.cfg"
 
 LOGS_DIRECTORY="$SCALING_PROJECT_HOME/logs"
 
@@ -9,7 +8,7 @@ LOGS_DIRECTORY="$SCALING_PROJECT_HOME/logs"
 # Backup logs, pids and conf
 #
 
-cd "$SCALING_PROJECT_HOME"
+cp -r "$LOGS_DIRECTORY/"* "$SCALING_PROJECT_HOME/analysis/$scaling_type"
 zip -r "results/results-`date +%Y-%m-%d-%H-%M-%S`.zip" "logs" "conf"
 
 # 
@@ -75,6 +74,8 @@ IFS=' '
 read -r -a ips <<< "`cat $SCALING_PROJECT_HOME/conf/domain.properties | grep -v "#" | grep IP | awk 'BEGIN {ORS=" "} {print $2}'`"
 read -r -a users <<< "`cat $SCALING_PROJECT_HOME/conf/domain.properties | grep -v "#" | grep user | awk 'BEGIN {ORS=" "} {print $2}'`"
 
+# Restore load balancer configuration
+
 LOAD_BALANCER_IP="${ips[0]}"
 LOAD_BALANCER_USER="${users[0]}"
 
@@ -86,3 +87,16 @@ ssh root@$LOAD_BALANCER_IP service haproxy restart
 echo "Restarting domain configuration"
 cp "$SCALING_PROJECT_HOME/backup/domain.properties" "$SCALING_PROJECT_HOME/conf"
 
+# Restore base VM configuration
+
+BASE_VM_NAME="${vms[1]}"
+
+echo "Stopping base computing node"
+virsh destroy $BASE_VM_NAME
+#FIXME hardcoded"
+echo "Restoring base computing node configuration"
+virsh schedinfo $BASE_VM_NAME --set vcpu_quota=25000
+virsh setvcpus $BASE_VM_NAME 1 --current
+
+echo "Starting base computing node"
+virsh start $BASE_VM_NAME
