@@ -19,4 +19,4 @@ do
 	sed -i -e 's/,/./g' $MERGED_USAGE_LOG_FILE
 done
 
-Rscript "$SCALING_PROJECT_HOME/analysis/resources_usage.R" "$MERGED_USAGE_LOG_FILE" "$PLOT_OUTPUT_FILE"
+#Rscript "$SCALING_PROJECT_HOME/analysis/resources_usage.R" "$MERGED_USAGE_LOG_FILE" "$PLOT_OUTPUT_FILE"

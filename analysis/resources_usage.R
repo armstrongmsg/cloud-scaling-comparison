@@ -48,10 +48,11 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 }
 
 args <- commandArgs(trailingOnly = TRUE)
-input_log_file <- args[1]
-plot_output_file <- args[2]
+#input_log_file <- args[1]
+#plot_output_file <- args[2]
 
-#input_log_file <- "analysis/merged_usage.log"
+input_log_file <- "analysis/merged_usage.log"
+plot_output_file <- "analysis/plots/usage.png"
 
 data <- read.csv(input_log_file, sep = " ", header = FALSE)
 scaling.times <- read.csv("analysis/scaling_times.txt", sep = "-", header = FALSE)
@@ -101,22 +102,25 @@ data.vms <- data.vms %>% mutate(usage = 100 - idle)
 
 plot.cpucap <- ggplot(data.cpucap, aes(timestamp, usage)) + 
   geom_line() +
-  xlab("Timestamp (in seconds)") +
-  ylab("CPU usage (in %)") +
+  xlab("") +
+  ylab("") +
+  ggtitle("Limitante de consumo") +
   geom_vline(xintercept = scaling.cpucap$start, colour = "red") +
   geom_vline(xintercept = scaling.cpucap$end, colour ="blue")
   
 plot.n_cpus <- ggplot(data.n_cpus, aes(timestamp, usage)) + 
   geom_line() +
-  xlab("Timestamp (in seconds)") +
-  ylab("CPU usage (in %)") +
+  xlab("") +
+  ylab("Uso de CPU (em %)") +
+  ggtitle("Adição de CPUs") +
   geom_vline(xintercept = scaling.n_cpus$start, colour = "red") +
   geom_vline(xintercept = scaling.n_cpus$end, colour ="blue")
 
 plot.vms <- ggplot(data.vms, aes(timestamp, usage)) + 
   geom_line() +
-  xlab("Timestamp (in seconds)") +
-  ylab("CPU usage (in %)") +
+  xlab("Tempo") +
+  ylab("") +
+  ggtitle("Adição de máquinas virtuais") +
   geom_vline(xintercept = scaling.vms$start, colour = "red") +
   geom_vline(xintercept = scaling.vms$end, colour ="blue")
 

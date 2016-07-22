@@ -115,6 +115,7 @@ plot.request.time.cpucap <- ggplot(data.client.cpucap, aes(timestamp, request_ti
   geom_line() +
   xlab("") +
   ylab("") +
+  ggtitle("Limitante de consumo") +
   # TODO better option?
   geom_vline(xintercept = scaling.client.cpucap$start, colour = "red") +
   geom_vline(xintercept = scaling.client.cpucap$end, colour ="blue")
@@ -123,6 +124,7 @@ plot.request.time.n_cpus <- ggplot(data.client.n_cpus, aes(timestamp, request_ti
   geom_line() +
   xlab("") +
   ylab("Tempo da requisição (em segundos)") +
+  ggtitle("Adição de CPUs") +
   # TODO better option?
   geom_vline(xintercept = scaling.client.n_cpus$start, colour = "red") +
   geom_vline(xintercept = scaling.client.n_cpus$end, colour ="blue")
@@ -131,6 +133,7 @@ plot.request.time.vms <- ggplot(data.client.vms, aes(timestamp, request_time/10^
   geom_line() +
   xlab("Tempo (em segundos)") +
   ylab("") +
+  ggtitle("Adição de máquinas virtuais") +
   # TODO better option?
   geom_vline(xintercept = scaling.client.vms$start, colour = "red") +
   geom_vline(xintercept = scaling.client.vms$end, colour ="blue")
@@ -150,6 +153,7 @@ plot.throughput.cpucap <- ggplot(tp_mean.cpucap, aes(time, count/elapsed_time, g
   xlab("") +
   #ylab("Vazão (em requisições por segundo)") + 
   ylab("") +
+  ggtitle("Limitante de consumo") +
   geom_vline(xintercept = scaling.client.cpucap$start%/%elapsed_time, colour = "red") +
   geom_vline(xintercept = scaling.client.cpucap$end%/%elapsed_time, colour ="blue")
 
@@ -159,6 +163,7 @@ plot.throughput.n_cpus <- ggplot(tp_mean.n_cpus, aes(time, count/elapsed_time, g
   geom_line() +
   xlab("") +
   ylab("Vazão (em requisições por segundo)") + 
+  ggtitle("Adição de CPUs") +
   geom_vline(xintercept = scaling.client.n_cpus$start%/%elapsed_time, colour = "red") +
   geom_vline(xintercept = scaling.client.n_cpus$end%/%elapsed_time, colour ="blue")
 
@@ -169,6 +174,7 @@ plot.throughput.vms <- ggplot(tp_mean.vms, aes(time, count/elapsed_time, group =
   xlab("Tempo") +
   #ylab("Vazão (em requisições por segundo)") + 
   ylab("") +
+  ggtitle("Adição de máquinas virtuais") +
   geom_vline(xintercept = scaling.client.vms$start%/%elapsed_time, colour = "red") +
   geom_vline(xintercept = scaling.client.vms$end%/%elapsed_time, colour ="blue")
 
