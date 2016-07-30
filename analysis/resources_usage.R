@@ -90,42 +90,25 @@ scaling.vms <- head(filter(scaling.times, scaling_type == "VMs"), 3)
 scaling.vms$start <- scaling.vms$start - data.vms.start
 scaling.vms$end <- scaling.vms$end - data.vms.start
 
-#data.client <- rbind(data.client.cpucap, data.client.n_cpus, data.client.vms)
-#scaling.client <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
-
 data.cpucap <- data.cpucap %>% mutate(usage = 100 - idle)
 data.n_cpus <- data.n_cpus %>% mutate(usage = 100 - idle)
 data.vms <- data.vms %>% mutate(usage = 100 - idle)
-# Analyze only the first 3 scaling processes
-#useful.scaling <- head(scaling.times, 3)
-#data <- data %>% mutate(usage = 100 - idle)
 
-plot.cpucap <- ggplot(data.cpucap, aes(timestamp, usage)) + 
-  geom_line() +
-  xlab("") +
-  ylab("") +
-  ggtitle("Limitante de consumo") +
-  geom_vline(xintercept = scaling.cpucap$start, colour = "red") +
-  geom_vline(xintercept = scaling.cpucap$end, colour ="blue")
-  
-plot.n_cpus <- ggplot(data.n_cpus, aes(timestamp, usage)) + 
-  geom_line() +
-  xlab("") +
-  ylab("Uso de CPU (em %)") +
-  ggtitle("Adição de CPUs") +
-  geom_vline(xintercept = scaling.n_cpus$start, colour = "red") +
-  geom_vline(xintercept = scaling.n_cpus$end, colour ="blue")
+# Mark the scaling period the data belong to
+data.cpucap <- mutate(data.cpucap, scaling = ifelse (timestamp < scaling.cpucap$end[1],1, ifelse (timestamp < scaling.cpucap$end[2],2, ifelse (timestamp < scaling.cpucap$end[3],3,4))))
+data.n_cpus <- mutate(data.n_cpus, scaling = ifelse (timestamp < scaling.n_cpus$end[1],1, ifelse (timestamp < scaling.n_cpus$end[2],2, ifelse (timestamp < scaling.n_cpus$end[3],3,4))))
+data.vms <- mutate(data.vms, scaling = ifelse (timestamp < scaling.vms$end[1],1, ifelse (timestamp < scaling.vms$end[2],2, ifelse (timestamp < scaling.vms$end[3],3,4))))
 
-plot.vms <- ggplot(data.vms, aes(timestamp, usage)) + 
-  geom_line() +
-  xlab("Tempo") +
-  ylab("") +
-  ggtitle("Adição de máquinas virtuais") +
-  geom_vline(xintercept = scaling.vms$start, colour = "red") +
-  geom_vline(xintercept = scaling.vms$end, colour ="blue")
+usage.data <- rbind(data.cpucap, data.n_cpus, data.vms)
+usage.data$scaling_type <- factor(usage.data$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling <- rbind(scaling.cpucap, scaling.n_cpus, scaling.vms)
+scaling$scaling_type <- factor(scaling$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
 
-# FIXME resolution
-png(plot_output_file, width=1200, height=900)
-multiplot(plot.cpucap, plot.n_cpus, plot.vms)
-dev.off()
-#ggsave(plot_output_file)
+ggplot(usage.data, aes(x=usage.data$timestamp,y=usage.data$usage)) + 
+  geom_line() +
+  geom_step(mapping=aes(x=timestamp,y=scaling*25), color = "blue") + 
+  facet_grid(scaling_type ~ .) +
+  xlab("Tempo (em segundos)") +
+  ylab("Uso de CPU") 
+
+ggsave(plot_output_file)

@@ -111,36 +111,27 @@ scaling.client <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.cl
 useful.scaling <- scaling.client
 useful.data <- data.client
 
-plot.request.time.cpucap <- ggplot(data.client.cpucap, aes(timestamp, request_time/10^9)) + 
-  geom_line() +
-  xlab("") +
-  ylab("") +
-  ggtitle("Limitante de consumo") +
-  # TODO better option?
-  geom_vline(xintercept = scaling.client.cpucap$start, colour = "red") +
-  geom_vline(xintercept = scaling.client.cpucap$end, colour ="blue")
+scaling.client.cpucap <- mutate(scaling.client.cpucap, type="CPU_CAP")
+scaling.client.n_cpus <- mutate(scaling.client.n_cpus, type="N_CPUs")
+scaling.client.vms <- mutate(scaling.client.vms, type="VMs")
 
-plot.request.time.n_cpus <- ggplot(data.client.n_cpus, aes(timestamp, request_time/10^9)) + 
-  geom_line() +
-  xlab("") +
-  ylab("Tempo da requisição (em segundos)") +
-  ggtitle("Adição de CPUs") +
-  # TODO better option?
-  geom_vline(xintercept = scaling.client.n_cpus$start, colour = "red") +
-  geom_vline(xintercept = scaling.client.n_cpus$end, colour ="blue")
+# Mark the scaling period the data belong to
+data.client.cpucap <- mutate(data.client.cpucap, scaling = ifelse (timestamp < scaling.client.cpucap$end[1],1, ifelse (timestamp < scaling.client.cpucap$end[2],2, ifelse (timestamp < scaling.client.cpucap$end[3],3,4))))
+data.client.n_cpus <- mutate(data.client.n_cpus, scaling = ifelse (timestamp < scaling.client.n_cpus$end[1],1, ifelse (timestamp < scaling.client.n_cpus$end[2],2, ifelse (timestamp < scaling.client.n_cpus$end[3],3,4))))
+data.client.vms <- mutate(data.client.vms, scaling = ifelse (timestamp < scaling.client.vms$end[1],1, ifelse (timestamp < scaling.client.vms$end[2],2, ifelse (timestamp < scaling.client.vms$end[3],3,4))))
 
-plot.request.time.vms <- ggplot(data.client.vms, aes(timestamp, request_time/10^9)) + 
+latency <- rbind(data.client.cpucap, data.client.n_cpus, data.client.vms)
+latency$type <- factor(latency$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
+scaling$type <- factor(scaling$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+
+ggplot(latency, aes(x=latency$timestamp,y=latency$request_time/10^9)) + 
   geom_line() +
+  geom_step(mapping=aes(x=timestamp,y=scaling/2), color = "blue") + 
+  facet_grid(type ~ .) +
   xlab("Tempo (em segundos)") +
-  ylab("") +
-  ggtitle("Adição de máquinas virtuais") +
-  # TODO better option?
-  geom_vline(xintercept = scaling.client.vms$start, colour = "red") +
-  geom_vline(xintercept = scaling.client.vms$end, colour ="blue")
-
-png("analysis/plots/request_time.png", width=1200, height=900)
-multiplot(plot.request.time.cpucap, plot.request.time.n_cpus, plot.request.time.vms)
-dev.off()
+  ylab("Tempo de requisição (em segundos)") +
+  coord_cartesian(ylim = c(0,3))
 
 ggsave("analysis/plots/client_request_time.png")
 
@@ -148,38 +139,42 @@ elapsed_time <- 5
 
 tp_mean.cpucap <- throughput_mean(data.client.cpucap$timestamp, elapsed_time)
 colnames(tp_mean.cpucap) <- c("time", "count")
-plot.throughput.cpucap <- ggplot(tp_mean.cpucap, aes(time, count/elapsed_time, group = 1)) + 
-  geom_line() +
-  xlab("") +
-  #ylab("Vazão (em requisições por segundo)") + 
-  ylab("") +
-  ggtitle("Limitante de consumo") +
-  geom_vline(xintercept = scaling.client.cpucap$start%/%elapsed_time, colour = "red") +
-  geom_vline(xintercept = scaling.client.cpucap$end%/%elapsed_time, colour ="blue")
+tp_mean.cpucap$time <- elapsed_time*as.numeric(tp_mean.cpucap$time)
+tp_mean.cpucap$count <- tp_mean.cpucap$count/elapsed_time
 
 tp_mean.n_cpus <- throughput_mean(data.client.n_cpus$timestamp, elapsed_time)
 colnames(tp_mean.n_cpus) <- c("time", "count")
-plot.throughput.n_cpus <- ggplot(tp_mean.n_cpus, aes(time, count/elapsed_time, group = 1)) + 
-  geom_line() +
-  xlab("") +
-  ylab("Vazão (em requisições por segundo)") + 
-  ggtitle("Adição de CPUs") +
-  geom_vline(xintercept = scaling.client.n_cpus$start%/%elapsed_time, colour = "red") +
-  geom_vline(xintercept = scaling.client.n_cpus$end%/%elapsed_time, colour ="blue")
+tp_mean.n_cpus$time <- elapsed_time*as.numeric(tp_mean.n_cpus$time)
+tp_mean.n_cpus$count <- tp_mean.n_cpus$count/elapsed_time
 
 tp_mean.vms <- throughput_mean(data.client.vms$timestamp, elapsed_time)
 colnames(tp_mean.vms) <- c("time", "count")
-plot.throughput.vms <- ggplot(tp_mean.vms, aes(time, count/elapsed_time, group = 1)) + 
-  geom_line() +
-  xlab("Tempo") +
-  #ylab("Vazão (em requisições por segundo)") + 
-  ylab("") +
-  ggtitle("Adição de máquinas virtuais") +
-  geom_vline(xintercept = scaling.client.vms$start%/%elapsed_time, colour = "red") +
-  geom_vline(xintercept = scaling.client.vms$end%/%elapsed_time, colour ="blue")
+tp_mean.vms$time <- elapsed_time*as.numeric(tp_mean.vms$time)
+tp_mean.vms$count <- tp_mean.vms$count/elapsed_time
 
-png("analysis/plots/throughput.png", width=1200, height=900)
-multiplot(plot.throughput.cpucap, plot.throughput.n_cpus, plot.throughput.vms)
-dev.off()
+tp_mean.cpucap <- mutate(tp_mean.cpucap, type="CPU_CAP")
+tp_mean.n_cpus <- mutate(tp_mean.n_cpus, type="N_CPUs")
+tp_mean.vms <- mutate(tp_mean.vms, type="VMs")
+
+scaling.client.cpucap <- mutate(scaling.client.cpucap, type="CPU_CAP")
+scaling.client.n_cpus <- mutate(scaling.client.n_cpus, type="N_CPUs")
+scaling.client.vms <- mutate(scaling.client.vms, type="VMs")
+
+# Mark the scaling period the data belong to
+tp_mean.cpucap <- mutate(tp_mean.cpucap, scaling = ifelse (time < scaling.client.cpucap$end[1],1, ifelse (time < scaling.client.cpucap$end[2],2, ifelse (time < scaling.client.cpucap$end[3],3,4))))
+tp_mean.n_cpus <- mutate(tp_mean.n_cpus, scaling = ifelse (time < scaling.client.n_cpus$end[1],1, ifelse (time < scaling.client.n_cpus$end[2],2, ifelse (time < scaling.client.n_cpus$end[3],3,4))))
+tp_mean.vms <- mutate(tp_mean.vms, scaling = ifelse (time < scaling.client.vms$end[1],1, ifelse (time < scaling.client.vms$end[2],2, ifelse (time < scaling.client.vms$end[3],3,4))))
+
+tp_mean <- rbind(tp_mean.cpucap.test, tp_mean.n_cpus.test, tp_mean.vms.test)
+tp_mean$type <- factor(test1$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
+scaling$type <- factor(test2$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+
+ggplot(tp_mean, aes(x=tp_mean$time,y=tp_mean$count)) + 
+  geom_line() +
+  geom_step(mapping=aes(x=time,y=scaling*10), color = "blue") + 
+  facet_grid(type ~ .) +
+  xlab("Tempo (em segundos)") +
+  ylab("Vazão (em requisições por segundo)")
 
 ggsave("analysis/plots/throughput_mean5.png")
