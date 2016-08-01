@@ -165,10 +165,10 @@ tp_mean.cpucap <- mutate(tp_mean.cpucap, scaling = ifelse (time < scaling.client
 tp_mean.n_cpus <- mutate(tp_mean.n_cpus, scaling = ifelse (time < scaling.client.n_cpus$end[1],1, ifelse (time < scaling.client.n_cpus$end[2],2, ifelse (time < scaling.client.n_cpus$end[3],3,4))))
 tp_mean.vms <- mutate(tp_mean.vms, scaling = ifelse (time < scaling.client.vms$end[1],1, ifelse (time < scaling.client.vms$end[2],2, ifelse (time < scaling.client.vms$end[3],3,4))))
 
-tp_mean <- rbind(tp_mean.cpucap.test, tp_mean.n_cpus.test, tp_mean.vms.test)
-tp_mean$type <- factor(test1$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+tp_mean <- rbind(tp_mean.cpucap, tp_mean.n_cpus, tp_mean.vms)
+tp_mean$type <- factor(tp_mean$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
 scaling <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
-scaling$type <- factor(test2$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling$type <- factor(scaling$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
 
 ggplot(tp_mean, aes(x=tp_mean$time,y=tp_mean$count)) + 
   geom_line() +
