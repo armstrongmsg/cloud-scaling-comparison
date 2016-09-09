@@ -121,16 +121,16 @@ data.client.n_cpus <- mutate(data.client.n_cpus, scaling = ifelse (timestamp < s
 data.client.vms <- mutate(data.client.vms, scaling = ifelse (timestamp < scaling.client.vms$end[1],1, ifelse (timestamp < scaling.client.vms$end[2],2, ifelse (timestamp < scaling.client.vms$end[3],3,4))))
 
 latency <- rbind(data.client.cpucap, data.client.n_cpus, data.client.vms)
-latency$type <- factor(latency$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+latency$type <- factor(latency$scaling_type, labels = c("CPU Cap", "N CPUs", "VMs"))
 scaling <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
-scaling$type <- factor(scaling$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling$type <- factor(scaling$scaling_type, labels = c("CPU Cap", "N CPUs", "VMs"))
 
 ggplot(latency, aes(x=latency$timestamp,y=latency$request_time/10^9)) + 
   geom_line() +
   geom_step(mapping=aes(x=timestamp,y=scaling/2), color = "blue") + 
   facet_grid(type ~ .) +
-  xlab("Tempo (em segundos)") +
-  ylab("Tempo de requisição (em segundos)") +
+  xlab("Time (seconds)") +
+  ylab("Request time (seconds)") +
   coord_cartesian(ylim = c(0,3))
 
 ggsave("analysis/plots/client_request_time.png")
@@ -166,15 +166,15 @@ tp_mean.n_cpus <- mutate(tp_mean.n_cpus, scaling = ifelse (time < scaling.client
 tp_mean.vms <- mutate(tp_mean.vms, scaling = ifelse (time < scaling.client.vms$end[1],1, ifelse (time < scaling.client.vms$end[2],2, ifelse (time < scaling.client.vms$end[3],3,4))))
 
 tp_mean <- rbind(tp_mean.cpucap, tp_mean.n_cpus, tp_mean.vms)
-tp_mean$type <- factor(tp_mean$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+tp_mean$type <- factor(tp_mean$type, labels = c("CPU Cap", "N CPUs", "VMs"))
 scaling <- rbind(scaling.client.cpucap, scaling.client.n_cpus, scaling.client.vms)
-scaling$type <- factor(scaling$type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling$type <- factor(scaling$type, labels = c("CPU Cap", "N CPUs", "VMs"))
 
 ggplot(tp_mean, aes(x=tp_mean$time,y=tp_mean$count)) + 
   geom_line() +
   geom_step(mapping=aes(x=time,y=scaling*10), color = "blue") + 
   facet_grid(type ~ .) +
-  xlab("Tempo (em segundos)") +
-  ylab("Vazão (em requisições por segundo)")
+  xlab("Time (seconds)") +
+  ylab("Throughput (requests per second)")
 
 ggsave("analysis/plots/throughput_mean5.png")

@@ -100,15 +100,15 @@ data.n_cpus <- mutate(data.n_cpus, scaling = ifelse (timestamp < scaling.n_cpus$
 data.vms <- mutate(data.vms, scaling = ifelse (timestamp < scaling.vms$end[1],1, ifelse (timestamp < scaling.vms$end[2],2, ifelse (timestamp < scaling.vms$end[3],3,4))))
 
 usage.data <- rbind(data.cpucap, data.n_cpus, data.vms)
-usage.data$scaling_type <- factor(usage.data$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+usage.data$scaling_type <- factor(usage.data$scaling_type, labels = c("CPU Cap", "N CPUs", "VMs"))
 scaling <- rbind(scaling.cpucap, scaling.n_cpus, scaling.vms)
-scaling$scaling_type <- factor(scaling$scaling_type, labels = c("Limitador de CPU", "N CPUs", "VMs"))
+scaling$scaling_type <- factor(scaling$scaling_type, labels = c("CPU Cap", "N CPUs", "VMs"))
 
 ggplot(usage.data, aes(x=usage.data$timestamp,y=usage.data$usage)) + 
   geom_line() +
   geom_step(mapping=aes(x=timestamp,y=scaling*25), color = "blue") + 
   facet_grid(scaling_type ~ .) +
-  xlab("Tempo (em segundos)") +
-  ylab("Uso de CPU") 
+  xlab("Time (seconds)") +
+  ylab("CPU Usage (%)") 
 
 ggsave(plot_output_file)

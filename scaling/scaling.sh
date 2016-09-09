@@ -4,6 +4,7 @@ PROJECT_HOME=$SCALING_PROJECT_HOME
 SCALING_LOG_FILE="$PROJECT_HOME/logs/scaling/scaling.log"
 ERROR_LOG_FILE="$PROJECT_HOME/logs/scaling/scaling.error"
 DOMAIN_CONF_FILE="$PROJECT_HOME/conf/domain.properties"
+APPLICATION="server.php"
 # FIXME conf file?
 BASE_DOMAIN="for_cloning"
 # FIXME HARDCODED
@@ -76,18 +77,31 @@ elif [ $SCALING_TYPE = "VMs" ]; then
 	virt-clone -o $BASE_DOMAIN --name $NEW_VM_NAME --file "$VMs_IMAGES_DIR/$NEW_VM_NAME"
 	virsh start $NEW_VM_NAME
 
-	# FIXME this is bad. The script is dependent on the time that the VM uses to startup
-	# Maybe a better option cat /var/lib/libvirt/dnsmasq/default.leases | grep $mac | awk '{print $3}'
-	sleep 30
-	
+	# Loop until get the value
+	log "Getting VM IP"
 	VM_MAC="`virsh domiflist $NEW_VM_NAME | awk 'FNR == 3 {print $5}'`"
-	VM_IP="`arp -e | grep $VM_MAC | awk '{print $1}'`"
+	VM_IP=""
+
+	while [ -z $VM_IP ];
+	do
+		VM_IP="`arp -e | grep $VM_MAC | awk '{print $1}'`"
+	done
 
 	log "VM IP: $VM_IP"
 
 	# avoid ssh asking for confirmation	
 	ssh-keyscan $VM_IP >> ~/.ssh/known_hosts
-	
+
+	# Loop requests, wait until VM can handle a new request
+	log "Waiting VM response"
+	curl $VM_IP/$APPLICATION > /dev/null 2>> "$PROJECT_HOME/logs/curl.error"
+	while [ $? -ne 0 ]
+	do
+		curl $VM_IP/$APPLICATION > /dev/null 2>> "$PROJECT_HOME/logs/curl.error"
+	done
+
+	log "VM answered request"
+
 	# add vm to domain.properties
 	echo >> $DOMAIN_CONF_FILE
 
